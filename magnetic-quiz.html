@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>Magnetic Effect of Current - Quiz (fixed)</title>
+
+    <!-- Tell MathJax to accept $...$ as inline delimiters -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                packages: {'[+]': ['ams']}
+            },
+            startup: {
+                typeset: false // we'll call typeset when needed
+            }
+        };
+    </script>
+    <script id="MathJax-script" async
+            src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        :root { --card:#ffffff; --muted:#718096; --accent:#3182ce; }
+        body {
+            font-family: 'Inter', system-ui, Arial, sans-serif;
+            background:#f0f4f8; margin:0; padding:24px; display:flex; justify-content:center;
+        }
+        .quiz-container { width:100%; max-width:980px; }
+        .quiz-card { background:var(--card); padding:20px; border-radius:14px; box-shadow:0 10px 30px rgba(2,6,23,0.06); border:1px solid #e6edf3; }
+        .header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; flex-wrap: wrap;}
+        .title { font-weight:800; font-size:1.25rem; }
+        .scorebox { background:#f7fafc; padding:8px 12px; border-radius:10px; font-weight:700; border:1px solid #e6edf3; }
+        .q-number { color:var(--muted); margin-bottom:6px; font-weight:600; }
+        .q-text { font-weight:700; font-size:1.12rem; margin-bottom:10px; line-height:1.45; }
+        .options-grid { display:grid; gap:10px; grid-template-columns:1fr; margin-bottom:12px; }
+        @media(min-width:640px) { .options-grid { grid-template-columns:1fr 1fr; } }
+        .option {
+            background:#fff; border:1px solid #cbd5e0; padding:12px; border-radius:10px; cursor:pointer;
+            display:flex; gap:10px; align-items:flex-start; user-select:none; transition:all .12s;
+            font-weight:600;
+        }
+        .option:hover { transform:translateY(-3px); box-shadow:0 6px 18px rgba(50,70,100,0.06); border-color:var(--accent); }
+        .option.locked { pointer-events:none; opacity:.72; transform:none; }
+        .option.correct { background:#c6f6d5; border-color:#38a169; color:#22543d; font-weight:800; opacity: 1 !important; }
+        .option.wrong { background:#fed7d7; border-color:#e53e3e; color:#822727; font-weight:800; opacity: 1 !important; }
+        .label { min-width:28px; height:28px; border-radius:50%; background:#edf2f7; display:inline-grid; place-items:center; font-weight:800; color:#2d3748; }
+        .explanation { display:none; padding:12px; border-radius:8px; margin-top:8px; font-size:.96rem; line-height:1.5; }
+        .explanation.correct { background:#ebf8ff; border-left:5px solid #3182ce; color:#2c5282; }
+        .explanation.wrong { background:#fffaf0; border-left:5px solid #dd6b20; color:#9c4221; }
+        .controls { display:flex; justify-content:space-between; gap:12px; align-items:center; margin-top:14px; flex-wrap:wrap; }
+        .nav { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+        .btn { padding:8px 14px; border-radius:10px; border:none; cursor:pointer; font-weight:800; }
+        .btn.primary { background:var(--accent); color:#fff; }
+        .btn.ghost { background:#edf2f7; border:1px solid #e6edf3; color:#2d3748; }
+        .status { color:var(--muted); font-weight:600; }
+        .jump-panel { display:flex; gap:6px; flex-wrap:wrap; }
+        .q-jump { width:36px; height:36px; border-radius:8px; display:grid; place-items:center; font-weight:700; cursor:pointer; border:1px solid #e6edf3; background:#fff; }
+        .q-jump.answered { background:#e6ffef; border-color:#48bb78; }
+        .q-jump.answered-wrong { background:#fed7d7; border-color:#f56565; }
+        .q-jump.current { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent);}
+        .result-panel { display:none; margin-top:12px; padding:12px; border-radius:8px; background:#f0fff4; border-left:5px solid #48bb78; font-weight:700; color:#276749; }
+    </style>
+</head>
+<body>
+    <div class="quiz-container">
+        <div class="quiz-card">
+            <div class="header">
+                <div>
+                    <div class="title">Magnetic Effect of Current — Quiz</div>
+                    <div style="font-size:.9rem; color:var(--muted); margin-top:4px;">Practice & revise — jump to any question</div>
+                </div>
+                <div class="scorebox" id="scoreBox">Score: 0 / 30</div>
+            </div>
+
+            <div id="qWrapper">
+                <div id="qNumber" class="q-number">Question 1 / 30</div>
+                <div id="qText" class="q-text">Loading question...</div>
+                <div id="optionsGrid" class="options-grid"></div>
+                <div id="explanationCorrect" class="explanation correct"></div>
+                <div id="explanationWrong" class="explanation wrong"></div>
+            </div>
+            
+            <div id="resultPanel" class="result-panel"></div>
+
+            <div style="margin-top:12px; border-top: 1px solid #e6edf3; padding-top: 14px; display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
+                <div class="nav">
+                    <button id="prevBtn" class="btn ghost" onclick="prevQuestion()">← Prev</button>
+                    <button id="nextBtn" class="btn ghost" onclick="nextQuestion()">Next →</button>
+                    <button id="submitBtn" class="btn primary" onclick="submitQuiz()">Submit</button>
+                    <button id="restartBtn" class="btn ghost" onclick="restartQuiz()" style="display:none;">Restart</button>
+                </div>
+
+                <div style="display:flex; gap:12px; align-items:center; flex-wrap: wrap;">
+                    <div class="status" id="statusText">Select an option.</div>
+                    <div style="font-size:.9rem; color:var(--muted);">Jump:</div>
+                    <div id="jumpPanel" class="jump-panel" aria-label="Jump to question"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+<script>
+/* ----- quiz data (math must be inside $...$) ----- */
+const quizDataRaw = {
+    "Rn": [
+        {
+            "question": "A proton enters a uniform magnetic field with a velocity perpendicular to the field. What will be the path of the proton?",
+            "kF":[
+                {"text":"Straight line", "wt":false, "mlb":"A charged particle follows a straight path only if its velocity is parallel or anti-parallel to the magnetic field, or if the net force is zero."},
+                {"text":"Circular", "wt":true, "mlb":"The magnetic force provides the necessary centripetal force because it is always perpendicular to the velocity, causing circular motion."},
+                {"text":"Helical", "wt":false, "mlb":"A helical path occurs when the velocity has components both perpendicular and parallel to the magnetic field."},
+                {"text":"Parabolic", "wt":false, "mlb":"A parabolic path is characteristic of motion under a constant force in one direction, like a projectile in a uniform gravitational field."}
+            ]
+        },
+        {
+            "question":"The magnetic field at the center of a circular current-carrying loop of radius R is B. If the radius is doubled while keeping the current constant, what is the new magnetic field at the center?",
+            "kF":[
+                {"text":"2B", "wt":false, "mlb":"This would be true if the magnetic field were directly proportional to the radius ($B \\propto R$), but it is inversely proportional."},
+                {"text":"B/4", "wt":false, "mlb":"This suggests an inverse-square relationship with the radius, which is incorrect for the magnetic field at the center of a loop."},
+                {"text":"4B", "wt":false, "mlb":"This implies a direct square relationship with the radius, which is also incorrect."},
+                {"text":"B/2", "wt":true, "mlb":"The magnetic field at the center of a circular loop is inversely proportional to its radius ($B \\propto 1/R$). Doubling the radius will halve the field."}
+            ]
+        },
+        {
+            "question": "A solenoid has 1000 turns per meter. If a current of 2 A is flowing through it, what is the magnetic field inside the solenoid? (Use $\\mu_0 = 4\\pi \\times 10^{-7}$ T m/A)",
+            "kF": [
+                {"text":"$8\\pi \\times 10^{-4}$ T", "wt":true, "mlb":"This value is calculated correctly using the formula B = $\\mu_0 n I$, where n is the number of turns per unit length."},
+                {"text":"$4\\pi \\times 10^{-4}$ T", "wt":false, "mlb":"This result might be obtained if the current were 1 A instead of 2 A, or if the turn density was 500 turns/m."},
+                {"text":"$2\\pi \\times 10^{-4}$ T", "wt":false, "mlb":"This result might be obtained if either the current or the turn density were halved from the given values."},
+                {"text":"$8\\pi \\times 10^{-7}$ T", "wt":false, "mlb":"This answer incorrectly uses the value of $\\mu_0$ without multiplying by the turn density (n=1000)."}
+            ]
+        },
+        {
+            "question": "Two long parallel wires carry currents $I_1$ and $I_2$ in the same direction. The force per unit length between them is F. If the current in both wires is doubled, the new force per unit length will be:",
+            "kF": [
+                {"text":"2F", "wt":false, "mlb":"The force is proportional to the product of the currents ($I_1 I_2$), not their sum. Doubling both currents leads to a larger increase."},
+                {"text":"F/2", "wt":false, "mlb":"The force increases when the currents increase, so the new force cannot be smaller than the original force."},
+                {"text":"4F", "wt":true, "mlb":"The force per unit length is proportional to the product of the currents ($F \\propto I_1 I_2$). If both are doubled, the new force is proportional to $(2I_1)(2I_2) = 4I_1 I_2$."},
+                {"text":"F/4", "wt":false, "mlb":"This would happen if both currents were halved, not doubled."}
+            ]
+        },
+        {
+            "question": "Which of the following principles is used in a moving coil galvanometer?",
+            "kF": [
+                {"text":"A current-carrying conductor experiences a force in a magnetic field.", "wt":true, "mlb":"This is the fundamental principle. The torque on the coil, which causes deflection, arises from the force on its current-carrying arms in the magnetic field."},
+                {"text":"Electromagnetic induction.", "wt":false, "mlb":"Electromagnetic induction (generating an EMF from changing magnetic flux) is the principle behind electric generators, not galvanometers."},
+                {"text":"The heating effect of current.", "wt":false, "mlb":"The heating effect (Joule heating) is not used to create the mechanical deflection in a galvanometer."},
+                {"text":"The chemical effect of current.", "wt":false, "mlb":"The chemical effect relates to processes like electrolysis and is not relevant to the operation of a galvanometer."}
+            ]
+        },
+        {
+            "question": "A cyclotron is used to accelerate:",
+            "kF": [
+                {"text":"Electrons", "wt":false, "mlb":"Electrons are too light. They quickly reach relativistic speeds, causing their mass to increase and fall out of sync with the oscillating electric field."},
+                {"text":"Neutrons", "wt":false, "mlb":"Neutrons are neutral particles and cannot be accelerated by the electric or magnetic fields used in a cyclotron."},
+                {"text":"Positive ions", "wt":true, "mlb":"Cyclotrons are specifically designed to accelerate heavy, charged particles like protons, deuterons, and alpha particles (which are all positive ions)."},
+                {"text":"Negative ions", "wt":false, "mlb":"While special types of cyclotrons for negative ions exist, they are not the typical use, and standard cyclotrons are for positive ions."}
+            ]
+        },
+        {
+            "question": "Ampere's Circuital Law is given by:",
+            "kF": [
+                {"text":"$\\oint \\vec{E} \\cdot d\\vec{l} = -\\frac{d\\Phi_B}{dt}$", "wt":false, "mlb":"This is Faraday's Law of Induction, relating induced EMF to the rate of change of magnetic flux."},
+                {"text":"$\\oint \\vec{B} \\cdot d\\vec{A} = 0$", "wt":false, "mlb":"This is Gauss's Law for Magnetism, which states that magnetic monopoles do not exist."},
+                {"text":"$\\oint \\vec{B} \\cdot d\\vec{l} = \\mu_0 I_{enc}$", "wt":true, "mlb":"This correctly states that the line integral of the magnetic field around a closed loop is proportional to the total current enclosed by that loop."},
+                {"text":"$\\oint \\vec{E} \\cdot d\\vec{A} = \\frac{Q_{enc}}{\\epsilon_0}$", "wt":false, "mlb":"This is Gauss's Law for Electrostatics, relating electric flux to enclosed charge."}
+            ]
+        },
+        {
+            "question": "The sensitivity of a moving coil galvanometer can be increased by:",
+            "kF": [
+                {"text":"Decreasing the number of turns in the coil.", "wt":false, "mlb":"Sensitivity is directly proportional to the number of turns (N), so decreasing them would decrease sensitivity."},
+                {"text":"Increasing the torsional constant of the spring.", "wt":false, "mlb":"Increasing the torsional constant (k) makes the spring stiffer, requiring more torque for deflection, thus decreasing sensitivity."},
+                {"text":"Decreasing the area of the coil.", "wt":false, "mlb":"Sensitivity is directly proportional to the area of the coil (A), so decreasing it would reduce sensitivity."},
+                {"text":"Decreasing the torsional constant of the spring.", "wt":true, "mlb":"A smaller torsional constant (k) means the spring is less stiff, allowing for a larger deflection for the same current, thereby increasing sensitivity ($S = NAB/k$)." }
+            ]
+        },
+        {
+            "question": "A straight wire of length L carries a current I. It is placed in a uniform magnetic field B, making an angle $\\theta$ with the field. The magnitude of the force on the wire is:",
+            "kF": [
+                {"text":"BIL", "wt":false, "mlb":"This is the expression for the maximum force, which only occurs when the wire is perpendicular to the magnetic field ($\\theta = 90^\\circ$)." },
+                {"text":"BIL sin$\\theta$", "wt":true, "mlb":"This is the correct general expression for the magnetic force, as it depends on the component of the magnetic field perpendicular to the current."},
+                {"text":"BIL cos$\\theta$", "wt":false, "mlb":"The force calculation involves a cross product, which brings in a sine term, not a cosine term."},
+                {"text":"Zero", "wt":false, "mlb":"The force is only zero when the wire is parallel or anti-parallel to the magnetic field ($\\theta = 0^\\circ$ or $180^\\circ$)." }
+            ]
+        },
+        {
+            "question": "To convert a galvanometer into an ammeter, one needs to connect a:",
+            "kF": [
+                {"text":"High resistance in series.", "wt":false, "mlb":"Connecting a high resistance in series is the method for converting a galvanometer into a voltmeter."},
+                {"text":"Low resistance in parallel.", "wt":true, "mlb":"A low-resistance 'shunt' is connected in parallel to divert most of the current, allowing the galvanometer to measure a much larger total current safely."},
+                {"text":"High resistance in parallel.", "wt":false, "mlb":"A high resistance in parallel would not effectively divert the large current required for an ammeter; most current would still flow through the galvanometer."},
+                {"text":"Low resistance in series.", "wt":false, "mlb":"Connecting any resistance in series increases the total resistance, which is the opposite of what is needed for an ammeter that should have very low resistance."}
+            ]
+        },
+        {
+            "question": "The magnetic susceptibility is negative for:",
+            "kF": [
+                {"text":"Paramagnetic materials", "wt":false, "mlb":"Paramagnetic materials are weakly attracted to magnetic fields, so their susceptibility is small but positive."},
+                {"text":"Ferromagnetic materials", "wt":false, "mlb":"Ferromagnetic materials are strongly attracted to magnetic fields and have a large, positive magnetic susceptibility."},
+                {"text":"Diamagnetic materials", "wt":true, "mlb":"Diamagnetic materials are weakly repelled by magnetic fields, which corresponds to a negative magnetic susceptibility."},
+                {"text":"Both paramagnetic and ferromagnetic materials", "wt":false, "mlb":"Both of these material types are attracted to magnetic fields and thus have positive susceptibility."}
+            ]
+        },
+        {
+            "question": "A toroid is a solenoid bent into a circular shape. The magnetic field outside a toroid is:",
+            "kF": [
+                {"text":"Uniform and strong", "wt":false, "mlb":"The field is strong and uniform inside the core of the toroid, not outside."},
+                {"text":"Non-uniform", "wt":false, "mlb":"For an ideal toroid, the external field is not just non-uniform; it is considered to be zero."},
+                {"text":"Zero", "wt":true, "mlb":"In an ideal toroid, the magnetic field is completely confined within its core. An Amperian loop outside the toroid encloses no net current, making the field zero."},
+                {"text":"Same as the field inside", "wt":false, "mlb":"The magnetic field lines are concentric circles that are strictly confined within the toroid's core."}
+            ]
+        },
+        {
+            "question": "The S.I. unit of magnetic flux is:",
+            "kF": [
+                {"text":"Tesla", "wt":false, "mlb":"Tesla (T) is the S.I. unit of magnetic field strength (or magnetic flux density), not magnetic flux."},
+                {"text":"Weber", "wt":true, "mlb":"Weber (Wb) is the S.I. unit of magnetic flux, defined as the total magnetic field lines passing through a given area."},
+                {"text":"Gauss", "wt":false, "mlb":"Gauss is a CGS unit of magnetic field strength, not the S.I. unit of magnetic flux."},
+                {"text":"Henry", "wt":false, "mlb":"Henry (H) is the S.I. unit of inductance, which relates magnetic flux to the current producing it."}
+            ]
+        },
+        {
+            "question": "What is the net force on a rectangular current loop placed in a uniform magnetic field?",
+            "kF": [
+                {"text":"Always zero", "wt":true, "mlb":"In a uniform magnetic field, the forces on opposite sides of the loop are equal in magnitude and opposite in direction, resulting in a zero net force (though there can be a net torque)."},
+                {"text":"Depends on the area of the loop", "wt":false, "mlb":"The torque on the loop depends on its area, but the net force does not."},
+                {"text":"Depends on the current", "wt":false, "mlb":"While the magnitude of the individual forces on the sides depends on the current, they always cancel each other out in a uniform field."},
+                {"text":"Never zero", "wt":false, "mlb":"The net force is zero as long as the magnetic field is uniform."}
+            ]
+        },
+        {
+            "question": "Biot-Savart law in vector form is:",
+            "kF": [
+                {"text":"$d\\vec{B} = \\frac{\\mu_0}{4\\pi} \\frac{I(d\\vec{l} \\times \\vec{r})}{r^2}$", "wt":false, "mlb":"This form is dimensionally incorrect. If $\\vec{r}$ is in the numerator, the denominator must be $r^3$ to maintain the $1/r^2$ dependence of the magnitude."},
+                {"text":"$d\\vec{B} = \\frac{\\mu_0}{4\\pi} \\frac{I(d\\vec{l} \\cdot \\vec{r})}{r^3}$", "wt":false, "mlb":"The magnetic field's direction is perpendicular to both the current element and the position vector, which requires a cross product, not a dot product."},
+                {"text":"$d\\vec{B} = \\frac{\\mu_0}{4\\pi} \\frac{I(d\\vec{l} \\times \\vec{r})}{r^3}$", "wt":true, "mlb":"This is the correct vector form, where the direction of $d\\vec{B}$ is given by the cross product and the magnitude has the required $1/r^2$ dependence."},
+                {"text":"$d\\vec{B} = \\frac{\\mu_0}{4\\pi} \\frac{I d\\vec{l}}{r^2}$", "wt":false, "mlb":"This expression is missing the vector components and does not correctly represent the direction of the magnetic field."}
+            ]
+        },
+        {
+            "question": "A charged particle moves through a magnetic field. The work done by the magnetic field on the particle is:",
+            "kF": [
+                {"text":"Maximum when it moves perpendicular to the field.", "wt":false, "mlb":"The force is maximum in this case, but work done is zero because the force is always perpendicular to the direction of motion (displacement)."},
+                {"text":"Dependent on the charge and magnetic field.", "wt":false, "mlb":"While the force depends on these factors, the work done is always zero because the force and displacement are always perpendicular."},
+                {"text":"Zero.", "wt":true, "mlb":"The magnetic force is always perpendicular to the particle's velocity. Since work is the dot product of force and displacement, and the angle is always $90^\\circ$, the work done is always zero."},
+                {"text":"Infinite.", "wt":false, "mlb":"This is physically impossible. The magnetic force cannot change the kinetic energy of the particle, it only changes its direction."}
+            ]
+        },
+        {
+            "question": "A wire in the form of a circular loop of one turn carries a current I and produces a magnetic field B at the center. If the same wire is bent into a loop of two turns, what is the new magnetic field at the center?",
+            "kF": [
+                {"text":"2B", "wt":false, "mlb":"This only accounts for doubling the number of turns (N), but ignores the fact that the radius (R) is halved."},
+                {"text":"4B", "wt":true, "mlb":"When bent into two turns (N=2), the radius becomes R/2. Since $B \\propto N/R$, the new field is proportional to $2 / (R/2) = 4/R$. Thus, the new field is 4B."},
+                {"text":"B/2", "wt":false, "mlb":"This incorrectly assumes the number of turns stays the same while only considering the halved radius."},
+                {"text":"B/4", "wt":false, "mlb":"This would imply the field decreased, but with more turns in a smaller area, the field should increase significantly."}
+            ]
+        },
+        {
+            "question": "The direction of the magnetic field produced by a straight current-carrying conductor can be found using:",
+            "kF": [
+                {"text":"Fleming's Left-Hand Rule", "wt":false, "mlb":"Fleming's Left-Hand Rule is used to find the direction of the force on a current-carrying conductor in an external magnetic field."},
+                {"text":"Right-Hand Thumb Rule", "wt":true, "mlb":"This rule correctly determines the direction of the circular magnetic field lines around a straight conductor when the thumb points in the direction of the current."},
+                {"text":"Lenz's Law", "wt":false, "mlb":"Lenz's Law is used in electromagnetic induction to determine the direction of the induced current."},
+                {"text":"Kirchhoff's Laws", "wt":false, "mlb":"Kirchhoff's laws are fundamental rules for analyzing currents and voltages in electrical circuits."}
+            ]
+        },
+        {
+            "question": "An electron and a proton enter a region of uniform magnetic field with the same kinetic energy, perpendicular to the field. The radius of the circular path of the electron will be:",
+            "kF": [
+                {"text":"Greater than that of the proton.", "wt":false, "mlb":"The radius is proportional to momentum ($r=p/qB$). For the same kinetic energy, the heavier particle (proton) has greater momentum ($p=\\sqrt{2mK}$), and thus a larger radius."},
+                {"text":"Less than that of the proton.", "wt":true, "mlb":"Radius $r = \\sqrt{2mK}/qB$. Since kinetic energy K, charge magnitude q, and field B are the same, the radius is proportional to the square root of mass ($r \\propto \\sqrt{m}$). As an electron is much less massive than a proton, its radius will be smaller."},
+                {"text":"Equal to that of the proton.", "wt":false, "mlb":"Although their charge magnitudes are equal, their masses are very different, which directly affects the radius of their paths."},
+                {"text":"Infinite for both.", "wt":false, "mlb":"An infinite radius would mean a straight path, which is impossible for a charged particle moving perpendicular to a magnetic field."}
+            ]
+        },
+        {
+            "question": "The force between two long, parallel conductors is inversely proportional to:",
+            "kF": [
+                {"text":"The distance between the conductors.", "wt":true, "mlb":"The formula for the force per unit length is $F/L = (\\mu_0 I_1 I_2) / (2\\pi d)$, showing it is inversely proportional to the distance d."},
+                {"text":"The product of the currents.", "wt":false, "mlb":"The force is directly proportional to the product of the currents ($I_1 I_2$), not inversely."},
+                {"text":"The square of the distance between the conductors.", "wt":false, "mlb":"An inverse-square relationship is characteristic of fields from point sources (like gravity or electrostatics), not from long wires."},
+                {"text":"The length of the conductors.", "wt":false, "mlb":"The total force is directly proportional to the length, but the force *per unit length* is independent of it."}
+            ]
+        },
+        {
+            "question": "A current loop of magnetic moment $\\vec{M}$ is placed in a uniform magnetic field $\\vec{B}$. The torque on the loop is given by:",
+            "kF": [
+                {"text":"$\\vec{\\tau} = \\vec{M} \\cdot \\vec{B}$", "wt":false, "mlb":"The dot product results in a scalar (which represents potential energy, $U = -\\vec{M} \\cdot \\vec{B}$), not a vector like torque."},
+                {"text":"$\\vec{\\tau} = \\vec{B} \\times \\vec{M}$", "wt":false, "mlb":"The order of vectors in a cross product is crucial. This would give a torque vector in the opposite direction of the actual torque."},
+                {"text":"$\\vec{\\tau} = \\vec{M} \\times \\vec{B}$", "wt":true, "mlb":"This correctly represents the torque as a cross product, giving both the correct magnitude ($MB\\sin\\theta$) and direction required to align the magnetic moment with the field."},
+                {"text":"$\\vec{\\tau} = M B$", "wt":false, "mlb":"This represents only the maximum possible magnitude of the torque and does not account for the vector nature or orientation of the loop in the field."}
+            ]
+        },
+        {
+            "question": "The magnetic field lines inside a long, current-carrying solenoid are:",
+            "kF": [
+                {"text":"Circular", "wt":false, "mlb":"Circular field lines are characteristic of a long straight wire, not the interior of a solenoid."},
+                {"text":"Radial", "wt":false, "mlb":"Radial field lines would imply the existence of magnetic monopoles inside the solenoid, which do not exist."},
+                {"text":"Nearly parallel and uniform", "wt":true, "mlb":"For an ideal long solenoid, the magnetic field inside is strong, uniform, and directed parallel to the axis of the solenoid."},
+                {"text":"Curved and non-uniform", "wt":false, "mlb":"This describes the 'fringing' field near the ends of the solenoid, but not the field deep inside it."}
+            ]
+        },
+        {
+            "question": "To convert a galvanometer into a voltmeter, one needs to connect a:",
+            "kF": [
+                {"text":"Low resistance in parallel.", "wt":false, "mlb":"This is the method for converting a galvanometer into an ammeter."},
+                {"text":"High resistance in series.", "wt":true, "mlb":"A high resistance (multiplier) is connected in series to limit the current and allow the device to measure a large potential difference across two points in a circuit."},
+                {"text":"Low resistance in series.", "wt":false, "mlb":"A low resistance in series would not significantly increase the voltage range of the galvanometer to make it a useful voltmeter."},
+                {"text":"High resistance in parallel.", "wt":false, "mlb":"Connecting a high resistance in parallel would only slightly alter the galvanometer's properties and would not create a voltmeter."}
+            ]
+        },
+        {
+            "question": "Lorentz force is the combination of:",
+            "kF": [
+                {"text":"Gravitational and electric forces.", "wt":false, "mlb":"The Lorentz force specifically describes electromagnetic interactions and does not include the gravitational force."},
+                {"text":"Electric and magnetic forces.", "wt":true, "mlb":"The Lorentz force equation, $\\vec{F} = q(\\vec{E} + \\vec{v} \\times \\vec{B})$, correctly combines the forces exerted by both electric and magnetic fields on a charged particle."},
+                {"text":"Gravitational and magnetic forces.", "wt":false, "mlb":"The Lorentz force does not include the gravitational force, which is a separate fundamental interaction."},
+                {"text":"Nuclear and magnetic forces.", "wt":false, "mlb":"The nuclear force is another separate fundamental force and is not part of the Lorentz force."}
+            ]
+        },
+        {
+            "question": "The time period of a charged particle undergoing circular motion in a uniform magnetic field is independent of its:",
+            "kF": [
+                {"text":"Charge", "wt":false, "mlb":"The time period is inversely proportional to the charge ($T = 2\\pi m / qB$), so it explicitly depends on the charge."},
+                {"text":"Magnetic field", "wt":false, "mlb":"The time period is inversely proportional to the magnetic field strength B, so it depends on the field."},
+                {"text":"Mass", "wt":false, "mlb":"The time period is directly proportional to the mass of the particle ($T \\propto m$), so it depends on mass."},
+                {"text":"Speed", "wt":true, "mlb":"The formula $T = 2\\pi m / qB$ shows no dependence on the speed (v) or the radius (r) of the circular path. A faster particle makes a larger circle in the same amount of time."}
+            ]
+        },
+        {
+            "question": "A long straight wire carries a current of 10 A. The magnetic field at a distance of 0.2 m from the wire is:",
+            "kF": [
+                {"text":"$1 \\times 10^{-5}$ T", "wt":true, "mlb":"Using the formula $B = (\\mu_0 I) / (2\\pi d)$, we get $B = (4\\pi \\times 10^{-7} \\times 10) / (2\\pi \\times 0.2) = 1 \\times 10^{-5}$ T."},
+                {"text":"$2 \\times 10^{-5}$ T", "wt":false, "mlb":"This would be the result if the distance were 0.1 m instead of 0.2 m."},
+                {"text":"$1 \\times 10^{-6}$ T", "wt":false, "mlb":"This result is off by a factor of 10, likely from an error in calculating with powers of ten."},
+                {"text":"$5 \\times 10^{-6}$ T", "wt":false, "mlb":"This value may result from a calculation error, perhaps by using d=0.4m or I=5A."}
+            ]
+        },
+        {
+            "question": "A velocity selector uses perpendicular electric and magnetic fields. A charged particle will pass through undeflected if its speed is:",
+            "kF": [
+                {"text":"E / B", "wt":true, "mlb":"For the particle to be undeflected, the electric force ($F_E = qE$) must exactly balance the magnetic force ($F_B = qvB$). Setting them equal ($qE = qvB$) gives the speed $v = E/B$."},
+                {"text":"B / E", "wt":false, "mlb":"This is the reciprocal of the correct expression. The units would be incorrect for speed."},
+                {"text":"EB", "wt":false, "mlb":"The units for this expression would not result in units of speed (m/s)."},
+                {"text":"$\\sqrt{E/B}$", "wt":false, "mlb":"The relationship between the forces is linear ($F \\propto E$ and $F \\propto B$), so a square root is not involved in the balancing condition."}
+            ]
+        },
+        {
+            "question": "The SI unit of magnetic moment is:",
+            "kF": [
+                {"text":"Ampere-meter (A$\\cdot$m)", "wt":false, "mlb":"This is the unit for magnetic pole strength, a concept used in the pole model of magnetism, not magnetic moment."},
+                {"text":"Ampere per meter (A/m)", "wt":false, "mlb":"This is the SI unit for magnetic field intensity (H), which is related to the magnetic field B."},
+                {"text":"Ampere-meter squared (A$\\cdot$m$^2$)", "wt":true, "mlb":"Magnetic moment of a current loop is defined as the product of current (I) and area (A), so its unit is Ampere times meter squared."},
+                {"text":"Tesla-meter (T$\\cdot$m)", "wt":false, "mlb":"This unit does not correspond to a standard magnetic quantity in this context."}
+            ]
+        },
+        {
+            "question": "Two parallel wires carrying currents in opposite directions will:",
+            "kF": [
+                {"text":"Attract each other.", "wt":false, "mlb":"Attraction occurs when the currents are in the same direction, as the magnetic fields between the wires oppose each other."},
+                {"text":"Repel each other.", "wt":true, "mlb":"The magnetic field from each wire at the location of the other wire causes a force directed away from the other wire, resulting in repulsion."},
+                {"text":"Exert no force on each other.", "wt":false, "mlb":"As long as there are currents, there will be magnetic fields, and these fields will exert forces on the other current-carrying wire."},
+                {"text":"Rotate.", "wt":false, "mlb":"There is no net torque that would cause the wires to rotate; the forces are purely translational (attractive or repulsive)."}
+            ]
+        },
+        {
+            "question": "What is the magnetic field at a point on the axis of a circular current loop of radius R at a distance x from the center, where x >> R?",
+            "kF": [
+                {"text":"Proportional to $1/x^2$", "wt":false, "mlb":"This distance dependence is characteristic of the field from a single magnetic pole (monopole), which doesn't exist, or an electric field from a point charge."},
+                {"text":"Proportional to $1/x^3$", "wt":true, "mlb":"At large distances (x >> R), the current loop behaves like a magnetic dipole, and the field from a dipole falls off as the cube of the distance."},
+                {"text":"Proportional to $1/x$", "wt":false, "mlb":"This distance dependence is characteristic of the magnetic field from a long straight wire, not a circular loop at a distance."},
+                {"text":"Constant", "wt":false, "mlb":"The magnetic field from any finite current source must decrease with distance."}
+            ]
+        }
+    ]
+};
+
+/* ----- Process raw data ----- */
+const questions = quizDataRaw.Rn.map((q, index) => {
+    const correctOptionIndex = q.kF.findIndex(opt => opt.wt === true);
+    return {
+        q: q.question,
+        opts: q.kF.map(opt => opt.text),
+        correct: correctOptionIndex,
+        rationales: q.kF.map(opt => opt.mlb)
+    };
+});
+
+let currentIndex = 0;
+let userAnswers = Array(questions.length).fill(null);
+let submitted = false;
+
+/* ----- DOM refs ----- */
+const qNumberEl = document.getElementById('qNumber');
+const qTextEl = document.getElementById('qText');
+const optionsGridEl = document.getElementById('optionsGrid');
+const explCorrectEl = document.getElementById('explanationCorrect');
+const explWrongEl = document.getElementById('explanationWrong');
+const statusTextEl = document.getElementById('statusText');
+const scoreBoxEl = document.getElementById('scoreBox');
+const resultPanelEl = document.getElementById('resultPanel');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const jumpPanel = document.getElementById('jumpPanel');
+const submitBtn = document.getElementById('submitBtn');
+const restartBtn = document.getElementById('restartBtn');
+const qWrapperEl = document.getElementById('qWrapper');
+
+
+/* ----- helper: build jump buttons ----- */
+function buildJumpPanel() {
+    jumpPanel.innerHTML = '';
+    questions.forEach((_, i) => {
+        const b = document.createElement('button');
+        b.className = 'q-jump';
+        b.textContent = i + 1;
+        if (i === currentIndex) b.classList.add('current');
+        if (userAnswers[i] !== null) {
+            b.classList.add(userAnswers[i] === questions[i].correct ? 'answered' : 'answered-wrong');
+        }
+        b.onclick = () => {
+             currentIndex = i; renderQuestion(i);
+        };
+        jumpPanel.appendChild(b);
+    });
+}
+
+/* ----- render one question ----- */
+function renderQuestion(idx) {
+    const item = questions[idx];
+    qNumberEl.textContent = `Question ${idx + 1} / ${questions.length}`;
+    qTextEl.innerHTML = item.q;
+    optionsGridEl.innerHTML = '';
+    explCorrectEl.style.display = 'none';
+    explWrongEl.style.display = 'none';
+    if (!submitted) resultPanelEl.style.display = 'none';
+    
+    statusTextEl.textContent = submitted ? "Quiz submitted." : (userAnswers[idx] === null ? "Select an option." : "Answer recorded.");
+    prevBtn.disabled = (idx === 0);
+    nextBtn.disabled = (idx === questions.length - 1);
+
+    const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+    item.opts.forEach((optText, i) => {
+        const el = document.createElement('div');
+        el.className = 'option';
+        el.dataset.index = i;
+        el.innerHTML = `<div class="label">${letters[i] || (i + 1)}</div><div style="flex:1">${optText}</div>`;
+        
+        if (userAnswers[idx] !== null || submitted) {
+            el.classList.add('locked');
+            if (i === item.correct) el.classList.add('correct');
+            else if (i === userAnswers[idx]) el.classList.add('wrong');
+        } else {
+            el.addEventListener('click', () => handleOptionClick(el, idx, i));
+        }
+        optionsGridEl.appendChild(el);
+    });
+    
+    if (userAnswers[idx] !== null) {
+        showExplanationFor(idx);
+    }
+
+    buildJumpPanel();
+
+    if (window.MathJax && MathJax.typesetPromise) {
+        MathJax.typesetPromise([qTextEl, optionsGridEl, explCorrectEl, explWrongEl]).catch(err => console.log('MathJax error:', err));
+    }
+    updateScoreDisplay();
+}
+
+/* ----- updated explanation: show correct answer when user is wrong ----- */
+function showExplanationFor(qIdx) {
+    const userAnswer = userAnswers[qIdx];
+    const q = questions[qIdx];
+
+    // hide both first
+    explCorrectEl.style.display = 'none';
+    explWrongEl.style.display = 'none';
+
+    if (userAnswer === q.correct) {
+        // User picked correct option — show single positive message
+        explCorrectEl.innerHTML = `✅ Correct! ${q.rationales[userAnswer]}`;
+        explCorrectEl.style.display = 'block';
+    } else {
+        // User picked wrong option
+        const wrongRationale = q.rationales[userAnswer] || '';
+        const correctRationale = q.rationales[q.correct] || '';
+
+        explWrongEl.innerHTML = `
+            <div style="margin-bottom: 8px;">❌ <strong>Your Answer:</strong> ${wrongRationale}</div>
+            <hr style="margin:10px 0;border:0;border-top: 1px solid #e2e8f0;">
+            <div>✅ <strong>Correct Explanation:</strong> ${correctRationale}</div>
+        `;
+        explWrongEl.style.display = 'block';
+    }
+
+    if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise([explCorrectEl, explWrongEl]).catch(()=>{});
+}
+
+
+/* ----- handle option click ----- */
+function handleOptionClick(optEl, qIdx, optIdx) {
+    if (submitted || userAnswers[qIdx] !== null) return;
+    userAnswers[qIdx] = optIdx;
+    
+    renderQuestion(qIdx);
+    
+    statusTextEl.textContent = (optIdx === questions[qIdx].correct) ? "Correct!" : "Incorrect.";
+    
+    updateScoreDisplay();
+    buildJumpPanel();
+}
+
+
+/* ----- score display ----- */
+function updateScoreDisplay() {
+    const correctCount = userAnswers.filter((ans, i) => ans === questions[i].correct).length;
+    scoreBoxEl.textContent = `Score: ${correctCount} / ${questions.length}`;
+}
+
+/* ----- navigation ----- */
+function nextQuestion() {
+    if (currentIndex < questions.length - 1) {
+        currentIndex++;
+        renderQuestion(currentIndex);
+    }
+}
+function prevQuestion() {
+    if (currentIndex > 0) {
+        currentIndex--;
+        renderQuestion(currentIndex);
+    }
+}
+
+/* ----- submit: final evaluation ----- */
+function submitQuiz() {
+    if (submitted) return;
+    const answeredCount = userAnswers.filter(ans => ans !== null).length;
+    if (answeredCount < questions.length) {
+        if (!confirm(`You have not answered all questions. Are you sure you want to submit?`)) return;
+    }
+    submitted = true;
+    
+    const correctCount = userAnswers.filter((ans, i) => ans === questions[i].correct).length;
+    const total = questions.length;
+    const accuracy = total === 0 ? 0 : (correctCount / total) * 100;
+    resultPanelEl.innerHTML = `Your Final Score: ${correctCount} out of ${total} — Accuracy: ${accuracy.toFixed(1)}%`;
+    resultPanelEl.style.display = 'block';
+    statusTextEl.textContent = "Quiz submitted — answers locked.";
+    
+    submitBtn.style.display = 'none';
+    restartBtn.style.display = 'inline-block';
+
+    renderQuestion(currentIndex); // Re-render to lock and show explanations
+    resultPanelEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+/* ----- restart: reset progress ----- */
+function restartQuiz() {
+    if (!confirm('Restart quiz? This will clear all your answers.')) return;
+    userAnswers = Array(questions.length).fill(null);
+    submitted = false;
+    currentIndex = 0;
+    submitBtn.style.display = 'inline-block';
+    restartBtn.style.display = 'none';
+    renderQuestion(currentIndex);
+    statusTextEl.textContent = "Select an option.";
+    resultPanelEl.style.display = 'none';
+}
+
+/* ----- initial render ----- */
+buildJumpPanel();
+renderQuestion(currentIndex);
+</script>
+</body>
+</html>
+
+
